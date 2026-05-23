@@ -1,14 +1,14 @@
 import os
 import json
 import re
-import anthropic
+from openai import AsyncOpenAI
 from typing import Dict, Any
 
 SYSTEM_PROMPT = """You are a world-class FIFA analyst with encyclopaedic knowledge of international football.
 You have deep insight into every World Cup since 1994, team tactics, squad compositions, manager styles,
 and the form of players in the top European leagues. You always back predictions with clear, concise reasoning."""
 
-# Entirely static — eligible for prompt caching on every call after the first
+# Static portion placed first — OpenAI automatically caches prompt prefixes >1024 tokens
 STATIC_PROMPT = """\
 ## 2026 FIFA World Cup — Full Tournament Prediction
 
@@ -74,8 +74,8 @@ Each match's teams must be drawn from winners of the previous round.
 Be bold with predictions. Consider realistic upsets. Keep reasoning to 1 sentence per match.\
 """
 
-# Dynamic per-call section — groups + league data (+ optional overrides appended)
 DYNAMIC_TEMPLATE = """\
+
 ### Qualified Teams by Group
 {groups_text}
 
@@ -95,7 +95,7 @@ an override must not appear in subsequent rounds. The champion must be consisten
 
 class PredictionAgent:
     def __init__(self):
-        self.client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
     async def predict(self, wc_data: Dict[str, Any], football_data: Dict[str, Any],
                       overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
@@ -112,34 +112,19 @@ class PredictionAgent:
             if override_text:
                 dynamic += OVERRIDE_ADDENDUM.format(override_text=override_text)
 
-        message = await self.client.messages.create(
-            model="claude-sonnet-4-6",
+        # Static prompt goes first so OpenAI's automatic prefix cache applies to it
+        user_content = STATIC_PROMPT + dynamic
+
+        response = await self.client.chat.completions.create(
+            model="gpt-4o",
             max_tokens=8000,
-            # Cache the system prompt — reused across all calls
-            system=[{
-                "type": "text",
-                "text": SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }],
-            messages=[{
-                "role": "user",
-                "content": [
-                    # Cache the large static block (task instructions + JSON schema)
-                    {
-                        "type": "text",
-                        "text": STATIC_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                    # Dynamic block — groups + football data + overrides (not cached)
-                    {
-                        "type": "text",
-                        "text": dynamic,
-                    },
-                ],
-            }],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
         )
 
-        raw = message.content[0].text.strip()
+        raw = response.choices[0].message.content.strip()
         return self._parse_response(raw)
 
     def _format_overrides(self, overrides: Dict[str, Any]) -> str:

@@ -147,6 +147,6 @@ async def get_quiz():
 async def health():
     return {
         "status": "ok",
-        "anthropic_key_set": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "openai_key_set": bool(os.getenv("OPENAI_API_KEY")),
         "football_key_set": bool(os.getenv("FOOTBALL_DATA_API_KEY")),
     }

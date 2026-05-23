@@ -1,7 +1,7 @@
 import os
 import json
 import re
-import anthropic
+from openai import AsyncOpenAI
 from typing import List, Dict, Any
 
 QUIZ_PROMPT = """Generate exactly 10 engaging FIFA World Cup trivia questions covering tournaments from 1994 to 2022.
@@ -35,24 +35,16 @@ Make sure wrong answers are plausible. No trick questions. Return only the JSON 
 
 class QuizAgent:
     def __init__(self):
-        self.client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
     async def generate_questions(self) -> List[Dict[str, Any]]:
-        # Haiku is sufficient for trivia generation and is ~20x cheaper than Sonnet.
-        # Cache the static prompt — benefits concurrent users within the same 5-min window.
-        message = await self.client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        # gpt-4o-mini is sufficient for trivia generation and is much cheaper than gpt-4o
+        response = await self.client.chat.completions.create(
+            model="gpt-4o-mini",
             max_tokens=2000,
-            messages=[{
-                "role": "user",
-                "content": [{
-                    "type": "text",
-                    "text": QUIZ_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }],
-            }],
+            messages=[{"role": "user", "content": QUIZ_PROMPT}],
         )
-        raw = message.content[0].text.strip()
+        raw = response.choices[0].message.content.strip()
 
         match = re.search(r"\[.*\]", raw, re.DOTALL)
         if not match:

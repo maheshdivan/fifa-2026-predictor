@@ -181,18 +181,28 @@ interface RoundSectionProps {
   onWinnerChange: (override: KnockoutOverride) => void
 }
 
+function gridCols(count: number): string {
+  if (count <= 2) return 'grid-cols-1 sm:grid-cols-2'
+  if (count <= 4) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+  return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+}
+
 function RoundSection({ title, emoji, round, matches, startDelay = 0, isEditing, overrides, onWinnerChange }: RoundSectionProps) {
-  const overriddenCount = matches.filter(m => isOverridden(m, round, overrides)).length
+  // Clamp SF to 2 matches, QF to 8, R16 to 16 — guard against Claude over-generating
+  const expected: Record<string, number> = { r16: 16, qf: 8, sf: 2 }
+  const displayMatches = expected[round] ? matches.slice(0, expected[round]) : matches
+  const overriddenCount = displayMatches.filter(m => isOverridden(m, round, overrides)).length
+
   return (
     <div className="mb-10">
       <h3 className="text-xl font-black text-white mb-4 flex items-center gap-2">
         <span className="text-2xl">{emoji}</span> {title}
-        <span className="text-xs text-slate-500 font-normal ml-1">({matches.length} matches)</span>
+        <span className="text-xs text-slate-500 font-normal ml-1">({displayMatches.length} matches)</span>
         {overriddenCount > 0 && (
           <span className="badge-gold text-xs">{overriddenCount} changed</span>
         )}
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className={`grid ${gridCols(displayMatches.length)} gap-3`}>
         {matches.map((m, i) => (
           <MatchCard
             key={getMatchId(m)}

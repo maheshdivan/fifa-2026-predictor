@@ -22,10 +22,12 @@ app = FastAPI(title="FIFA 2026 World Cup Predictor")
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "")
 CORS_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()] or ["*"]
 
+# allow_credentials must be False when allow_origins=["*"] — browsers reject the
+# combination and strip CORS headers entirely, breaking all cross-origin requests.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

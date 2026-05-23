@@ -39,7 +39,7 @@ class FootballDataAgent:
                 try:
                     scorers_resp = await client.get(
                         f"{BASE_URL}/competitions/{code}/scorers",
-                        params={"limit": 10},
+                        params={"limit": 5},
                     )
                     if scorers_resp.status_code == 200:
                         data = scorers_resp.json()
@@ -66,7 +66,7 @@ class FootballDataAgent:
                 (s for s in standings if s.get("type") == "TOTAL"), None
             )
             if total_table:
-                for entry in total_table.get("table", [])[:8]:
+                for entry in total_table.get("table", [])[:5]:
                     team = entry.get("team", {})
                     summary["top_clubs"].append({
                         "position": entry.get("position"),
@@ -103,19 +103,16 @@ class FootballDataAgent:
     def _build_summary(self, league_data: Dict, scorers_data: Dict) -> str:
         lines = ["## Current European League Data\n"]
         for code, info in league_data.items():
-            lines.append(f"### {info.get('league', code)} (Season {info.get('season', '?')})")
-            for club in info.get("top_clubs", [])[:5]:
+            lines.append(f"### {info.get('league', code)} ({info.get('season', '?')})")
+            for club in info.get("top_clubs", []):
                 lines.append(
-                    f"  {club['position']}. {club['team']} — {club['points']} pts "
-                    f"(W{club['won']} D{club['draw']} L{club['lost']})"
+                    f"  {club['position']}. {club['team']} — {club['points']}pts "
+                    f"W{club['won']} D{club['draw']} L{club['lost']}"
                 )
             lines.append("")
 
-        lines.append("### Top Scorers Across Leagues")
+        lines.append("### Top Scorers")
         for code, info in scorers_data.items():
-            for s in info.get("scorers", [])[:5]:
-                lines.append(
-                    f"  {s['player']} ({s['nationality']}, {s['team']}): "
-                    f"{s['goals']} goals, {s['assists']} assists"
-                )
+            for s in info.get("scorers", [])[:3]:
+                lines.append(f"  {s['player']} ({s['nationality']}): {s['goals']}g")
         return "\n".join(lines)

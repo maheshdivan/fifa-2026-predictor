@@ -38,17 +38,24 @@ class QuizAgent:
         self.client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 
     async def generate_questions(self) -> List[Dict[str, Any]]:
+        # Haiku is sufficient for trivia generation and is ~20x cheaper than Sonnet.
+        # Cache the static prompt — benefits concurrent users within the same 5-min window.
         message = await self.client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-haiku-4-5-20251001",
             max_tokens=2000,
-            messages=[{"role": "user", "content": QUIZ_PROMPT}],
+            messages=[{
+                "role": "user",
+                "content": [{
+                    "type": "text",
+                    "text": QUIZ_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }],
+            }],
         )
         raw = message.content[0].text.strip()
 
-        # Extract JSON array from response
         match = re.search(r"\[.*\]", raw, re.DOTALL)
         if not match:
             raise ValueError("Quiz response did not contain a JSON array")
 
-        questions = json.loads(match.group(0))
-        return questions
+        return json.loads(match.group(0))

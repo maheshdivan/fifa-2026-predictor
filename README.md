@@ -8,7 +8,7 @@ An AI-powered web application that predicts the complete 2026 FIFA World Cup tou
 
 1. **Paste a Wikipedia URL** (e.g. the 2026 FIFA World Cup page)
 2. **While Claude analyses**, take a 10-question FIFA trivia quiz to pass the time
-3. **Get full predictions** — all 12 groups, Round of 16, Quarter-finals, Semi-finals, and the Final
+3. **Get full predictions** — all 12 groups, Round of 32, Round of 16, Quarter-finals, Semi-finals, and the Final
 4. **Override results** — disagree with Claude? Reorder groups or flip match winners yourself
 5. **Re-predict** — Claude re-runs the tournament respecting your custom picks
 
@@ -17,19 +17,19 @@ An AI-powered web application that predicts the complete 2026 FIFA World Cup tou
 ## Screenshots
 
 ### Landing Page
-![Landing Page](docs/screenshot-landing.png)
+![Landing Page](docs/landing_page.png)
 
 ### Live Analysis + Quiz
-![Loading Screen](docs/screenshot-loading.png)
+![Loading Screen](docs/Live_analytics_quiz.png)
 
 ### Group Stage Results
-![Group Stage](docs/screenshot-groups.png)
+![Group Stage](docs/Group_stage_results.png)
 
 ### Knockout Bracket
-![Bracket](docs/screenshot-bracket.png)
+![Bracket](docs/knock_out_stage.png)
 
 ### Edit Mode
-![Edit Mode](docs/screenshot-edit.png)
+![Edit Mode](docs/edit_mode.png)
 
 ---
 
@@ -48,7 +48,7 @@ FootballDataAgent ──────────── Fetches current standings
      ▼
 PredictionAgent (Claude AI) ── Analyses 20 years of WC history,
      │                         squad quality, player form, FIFA rankings
-     │                         → Predicts all 7 rounds
+     │                         → Predicts all 8 rounds
      ▼
 QuizAgent (Claude AI) ───────── Generates 10 trivia questions
                                 in parallel while predictions run

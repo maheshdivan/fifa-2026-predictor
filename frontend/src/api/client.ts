@@ -1,8 +1,30 @@
 import type { QuizQuestion, UserOverrides } from '../types'
 
-// In production, VITE_API_URL is set to the backend URL (e.g. https://fifa-api.onrender.com/api).
-// In local dev, the Vite proxy forwards /api → localhost:8000/api so no env var is needed.
+// In production, VITE_API_URL points to the Render backend (e.g. https://fifa-api.onrender.com/api).
+// In local dev, the Vite proxy forwards /api → localhost:8000/api.
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api'
+
+// Render free tier sleeps after 15 min of inactivity.
+// This pings the health endpoint until the server wakes up (up to 60s).
+export async function warmUpServer(
+  onStatus: (msg: string) => void
+): Promise<void> {
+  const HEALTH = BASE.replace(/\/api$/, '') + '/api/health'
+  const MAX_ATTEMPTS = 12   // 12 × 5s = 60s max
+  const DELAY = 5000
+
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    try {
+      const res = await fetch(HEALTH, { signal: AbortSignal.timeout(6000) })
+      if (res.ok) return                           // server is awake
+    } catch {
+      // still sleeping — keep trying
+    }
+    if (i === 0) onStatus('Waking up server — this takes ~30s on first visit…')
+    await new Promise(r => setTimeout(r, DELAY))
+  }
+  // timed out — let the stream try anyway
+}
 
 export async function fetchQuiz(): Promise<QuizQuestion[]> {
   const res = await fetch(`${BASE}/quiz`)

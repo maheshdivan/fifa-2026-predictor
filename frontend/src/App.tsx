@@ -8,7 +8,7 @@ import GroupStageResults from './components/GroupStageResults'
 import TournamentBracket from './components/TournamentBracket'
 import ConfirmModal from './components/ConfirmModal'
 import OverridesBanner from './components/OverridesBanner'
-import { fetchQuiz, streamPredictions, streamOverridePredictions } from './api/client'
+import { fetchQuiz, warmUpServer, streamPredictions, streamOverridePredictions } from './api/client'
 import type {
   AppState, QuizQuestion, Predictions, WCData,
   GroupOverride, KnockoutOverride, UserOverrides,
@@ -60,6 +60,11 @@ export default function App() {
     setQuizDone(false)
     setGroupOverrides([])
     setKnockoutOverrides([])
+
+    // Wake up Render if it's sleeping before opening the SSE stream
+    await warmUpServer((msg) =>
+      setProgressEvents([{ step: 'warmup', message: msg, progress: 3 }])
+    )
 
     try {
       const qs = await fetchQuiz()

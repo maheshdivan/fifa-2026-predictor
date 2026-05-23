@@ -188,8 +188,8 @@ function gridCols(count: number): string {
 }
 
 function RoundSection({ title, emoji, round, matches, startDelay = 0, isEditing, overrides, onWinnerChange }: RoundSectionProps) {
-  // Clamp SF to 2 matches, QF to 8, R16 to 16 — guard against Claude over-generating
-  const expected: Record<string, number> = { r16: 16, qf: 8, sf: 2 }
+  // Clamp each round to expected match count — guard against Claude over-generating
+  const expected: Record<string, number> = { r32: 16, r16: 8, qf: 4, sf: 2 }
   const displayMatches = expected[round] ? matches.slice(0, expected[round]) : matches
   const overriddenCount = displayMatches.filter(m => isOverridden(m, round, overrides)).length
 
@@ -241,11 +241,13 @@ export default function TournamentBracket({ predictions, isEditing, knockoutOver
         )}
       </div>
 
-      <RoundSection title="Round of 16" emoji="⚔️" round="r16" matches={predictions.r16} startDelay={0.1}
+      <RoundSection title="Round of 32" emoji="⚔️" round="r32" matches={predictions.r32 ?? []} startDelay={0.05}
         isEditing={isEditing} overrides={knockoutOverrides} onWinnerChange={onWinnerChange} />
-      <RoundSection title="Quarter-Finals" emoji="🥊" round="qf" matches={predictions.qf} startDelay={0.2}
+      <RoundSection title="Round of 16" emoji="🗡️" round="r16" matches={predictions.r16} startDelay={0.15}
         isEditing={isEditing} overrides={knockoutOverrides} onWinnerChange={onWinnerChange} />
-      <RoundSection title="Semi-Finals" emoji="🌟" round="sf" matches={predictions.sf} startDelay={0.3}
+      <RoundSection title="Quarter-Finals" emoji="🥊" round="qf" matches={predictions.qf} startDelay={0.25}
+        isEditing={isEditing} overrides={knockoutOverrides} onWinnerChange={onWinnerChange} />
+      <RoundSection title="Semi-Finals" emoji="🌟" round="sf" matches={predictions.sf} startDelay={0.35}
         isEditing={isEditing} overrides={knockoutOverrides} onWinnerChange={onWinnerChange} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">

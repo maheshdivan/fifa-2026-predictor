@@ -13,8 +13,8 @@ PREDICTION_PROMPT_TEMPLATE = """
 
 ### Tournament Structure (2026 Format)
 - 48 teams, 12 groups of 4 (Groups A–L)
-- Top 2 from each group advance (24 teams) + best 8 third-place teams = 32 teams in Round of 16
-- Knockout: R16 → QF (8 matches) → SF (4 matches) → 3rd place + Final
+- Top 2 from each group advance (24 teams) + best 8 third-place teams = 32 teams
+- Knockout: Round of 32 (16 matches) → Round of 16 (8 matches) → QF (4 matches) → SF (2 matches) → 3rd place + Final
 
 ### Qualified Teams by Group
 {groups_text}
@@ -34,8 +34,9 @@ Based on:
 Predict the **complete 2026 FIFA World Cup** including:
 - Group stage finishing positions for all 12 groups
 - Which 8 third-place teams advance (best 8)
-- All Round of 16 matches (follow the official 2026 FIFA bracket seeding: A1vB2, B1vA2, C1vD2, D1vC2, E1vF2, F1vE2, G1vH2, H1vG2, I1vJ2, J1vI2, K1vL2, L1vK2, plus 4 best-third-place slot slots)
-- All Quarter-final matches
+- All 16 Round of 32 matches (official 2026 seeding: A1vB2, B1vA2, C1vD2, D1vC2, E1vF2, F1vE2, G1vH2, H1vG2, I1vJ2, J1vI2, K1vL2, L1vK2, plus 4 matches involving the best 8 third-place qualifiers)
+- All 8 Round of 16 matches (winners from Round of 32)
+- All 4 Quarter-final matches
 - Both Semi-final matches
 - Third-place match
 - Final and champion
@@ -55,6 +56,9 @@ Return ONLY a valid JSON object in this exact structure (no other text):
     }}
   ],
   "best_third_place": ["Country1", "Country2", "Country3", "Country4", "Country5", "Country6", "Country7", "Country8"],
+  "r32": [
+    {{"match": "R32-1", "team1": "Country", "team2": "Country", "winner": "Country", "score": "2-1", "reasoning": "..."}}
+  ],
   "r16": [
     {{"match": "R16-1", "team1": "Country", "team2": "Country", "winner": "Country", "score": "2-1", "reasoning": "..."}}
   ],
@@ -69,6 +73,8 @@ Return ONLY a valid JSON object in this exact structure (no other text):
   "champion": "Country",
   "champion_reasoning": "2-3 sentences on why this team wins the tournament"
 }}
+
+IMPORTANT: r32 must have EXACTLY 16 matches, r16 must have EXACTLY 8 matches, qf must have EXACTLY 4 matches, sf must have EXACTLY 2 matches. Each match's teams must be winners from the previous round.
 
 Be bold with predictions. Consider realistic upsets. Keep reasoning concise (1 sentence per match).
 """

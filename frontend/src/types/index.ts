@@ -45,6 +45,7 @@ export interface FinalMatch {
 export interface Predictions {
   group_results: GroupResult[]
   best_third_place: string[]
+  r32: KnockoutMatch[]
   r16: KnockoutMatch[]
   qf: KnockoutMatch[]
   sf: KnockoutMatch[]

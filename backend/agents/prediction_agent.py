@@ -8,87 +8,89 @@ SYSTEM_PROMPT = """You are a world-class FIFA analyst with encyclopaedic knowled
 You have deep insight into every World Cup since 1994, team tactics, squad compositions, manager styles,
 and the form of players in the top European leagues. You always back predictions with clear, concise reasoning."""
 
-# Static portion placed first — OpenAI automatically caches prompt prefixes >1024 tokens
-STATIC_PROMPT = """\
-## 2026 FIFA World Cup — Full Tournament Prediction
+# Static prefix (cached by OpenAI for repeat calls)
+STATIC_PREFIX = """\
+## 2026 FIFA World Cup — Tournament Prediction
 
-### Tournament Structure (2026 Format)
+### Format
 - 48 teams, 12 groups of 4 (Groups A–L)
-- Top 2 from each group advance (24 teams) + best 8 third-place teams = 32 teams
-- Knockout: Round of 32 (16 matches) → Round of 16 (8 matches) → QF (4 matches) → SF (2 matches) → 3rd place + Final
+- Top 2 per group + best 8 third-place teams = 32 teams enter the knockout stage
+- Round of 32 seeding: A1vB2, B1vA2, C1vD2, D1vC2, E1vF2, F1vE2, G1vH2, H1vG2, I1vJ2, J1vI2, K1vL2, L1vK2, plus 4 matches involving the best 8 third-place finishers
+- Round of 32 (16 matches) → Round of 16 (8) → QF (4) → SF (2) → 3rd-place match + Final
 
-### Your Task
-Based on:
-1. Each team's historical World Cup performance (2006, 2010, 2014, 2018, 2022)
-2. Current squad quality evidenced by league data below
-3. FIFA World Rankings (use your knowledge)
-4. Manager quality and tactical sophistication
-5. Tournament experience and big-game mentality
-6. Physical/tactical matchup dynamics
+### Your task
+The group compositions are the OFFICIAL December 2025 draw — they are fixed input, not for you to predict.
+You must:
+1. Fill in **position** (1–4 within the group), **points**, **gf**, **ga** for every team listed.
+2. Choose the best 8 third-place teams for best_third_place.
+3. Simulate every knockout match through to the champion.
 
-Predict the **complete 2026 FIFA World Cup** including:
-- Group stage finishing positions for all 12 groups
-- Which 8 third-place teams advance (best 8)
-- All 16 Round of 32 matches (official 2026 seeding: A1vB2, B1vA2, C1vD2, D1vC2, E1vF2, F1vE2, G1vH2, H1vG2, I1vJ2, J1vI2, K1vL2, L1vK2, plus 4 matches for best 8 third-place qualifiers)
-- All 8 Round of 16 matches (winners from Round of 32)
-- All 4 Quarter-final matches
-- Both Semi-final matches
-- Third-place match
-- Final and champion
+Base your predictions on historical WC performance, squad quality, FIFA rankings, manager quality, and tactical matchups.
 
-Return ONLY a valid JSON object in this exact structure (no other text):
-
-{
-  "group_results": [
-    {
-      "group": "A",
-      "teams": [
-        {"name": "TeamName", "position": 1, "points": 9, "gf": 7, "ga": 2},
-        {"name": "TeamName", "position": 2, "points": 6, "gf": 4, "ga": 3},
-        {"name": "TeamName", "position": 3, "points": 3, "gf": 2, "ga": 4},
-        {"name": "TeamName", "position": 4, "points": 0, "gf": 1, "ga": 8}
-      ]
-    }
-  ],
-  "best_third_place": ["Country1", "Country2", "Country3", "Country4", "Country5", "Country6", "Country7", "Country8"],
-  "r32": [
-    {"match": "R32-1", "team1": "Country", "team2": "Country", "winner": "Country", "score": "2-1", "reasoning": "..."}
-  ],
-  "r16": [
-    {"match": "R16-1", "team1": "Country", "team2": "Country", "winner": "Country", "score": "2-1", "reasoning": "..."}
-  ],
-  "qf": [
-    {"match": "QF-1", "team1": "Country", "team2": "Country", "winner": "Country", "score": "1-0", "reasoning": "..."}
-  ],
-  "sf": [
-    {"match": "SF-1", "team1": "Country", "team2": "Country", "winner": "Country", "score": "2-1", "reasoning": "..."}
-  ],
-  "third_place": {"team1": "Country", "team2": "Country", "winner": "Country", "score": "2-1", "reasoning": "..."},
-  "final": {"team1": "Country", "team2": "Country", "winner": "Country", "score": "1-0 (AET)", "reasoning": "..."},
-  "champion": "Country",
-  "champion_reasoning": "2-3 sentences on why this team wins the tournament"
-}
-
-IMPORTANT: r32 must have EXACTLY 16 matches, r16 EXACTLY 8, qf EXACTLY 4, sf EXACTLY 2.
-Each match's teams must be drawn from winners of the previous round.
-Be bold with predictions. Consider realistic upsets. Keep reasoning to 1 sentence per match.\
+### Rules
+- Return ONLY valid JSON — no prose, no markdown fences.
+- r32 EXACTLY 16 matches, r16 EXACTLY 8, qf EXACTLY 4, sf EXACTLY 2.
+- Team names in group_results are pre-filled — copy them VERBATIM; do NOT rename or replace any team.
+- Each knockout match must only feature teams that qualified from your group results.
+- Keep reasoning to 1 sentence per match. Be bold; include realistic upsets.\
 """
 
 DYNAMIC_TEMPLATE = """\
 
-### ⚠️ OFFICIAL GROUP COMPOSITIONS — FIXED, DO NOT ALTER
-The 48 teams below are the OFFICIAL 2026 FIFA World Cup draw results.
-CRITICAL RULES:
-- Each group contains EXACTLY and ONLY the 4 teams listed below.
-- You MUST use ONLY these team names in group_results, spelled exactly as written.
-- Do NOT substitute, hallucinate, add, or remove ANY teams from ANY group.
-- Argentina is NOT in Group A. Netherlands is NOT in Group A. Cameroon is NOT in Group A.
-- Every team in your group_results JSON MUST be one of the teams listed below for that group.
 
-{groups_text}
-
-### Current European League Strength Indicators
+### League Strength Indicators
 {football_data_summary}
+
+### Complete the following JSON (team names are already filled in — add the numbers):
+
+{{
+  "group_results": [
+{group_results_template}
+  ],
+  "best_third_place": ["Country1","Country2","Country3","Country4","Country5","Country6","Country7","Country8"],
+  "r32": [
+    {{"match":"R32-1","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"R32-2","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R32-3","team1":"Country","team2":"Country","winner":"Country","score":"2-0","reasoning":"..."}},
+    {{"match":"R32-4","team1":"Country","team2":"Country","winner":"Country","score":"3-1","reasoning":"..."}},
+    {{"match":"R32-5","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R32-6","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"R32-7","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R32-8","team1":"Country","team2":"Country","winner":"Country","score":"2-0","reasoning":"..."}},
+    {{"match":"R32-9","team1":"Country","team2":"Country","winner":"Country","score":"3-0","reasoning":"..."}},
+    {{"match":"R32-10","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R32-11","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"R32-12","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R32-13","team1":"Country","team2":"Country","winner":"Country","score":"2-0","reasoning":"..."}},
+    {{"match":"R32-14","team1":"Country","team2":"Country","winner":"Country","score":"1-1 (4-3p)","reasoning":"..."}},
+    {{"match":"R32-15","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"R32-16","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}}
+  ],
+  "r16": [
+    {{"match":"R16-1","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"R16-2","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R16-3","team1":"Country","team2":"Country","winner":"Country","score":"2-0","reasoning":"..."}},
+    {{"match":"R16-4","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R16-5","team1":"Country","team2":"Country","winner":"Country","score":"3-1","reasoning":"..."}},
+    {{"match":"R16-6","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"R16-7","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"R16-8","team1":"Country","team2":"Country","winner":"Country","score":"2-0","reasoning":"..."}}
+  ],
+  "qf": [
+    {{"match":"QF-1","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"QF-2","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"QF-3","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}},
+    {{"match":"QF-4","team1":"Country","team2":"Country","winner":"Country","score":"2-0","reasoning":"..."}}
+  ],
+  "sf": [
+    {{"match":"SF-1","team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+    {{"match":"SF-2","team1":"Country","team2":"Country","winner":"Country","score":"1-0","reasoning":"..."}}
+  ],
+  "third_place": {{"team1":"Country","team2":"Country","winner":"Country","score":"2-1","reasoning":"..."}},
+  "final": {{"team1":"Country","team2":"Country","winner":"Country","score":"1-0 (AET)","reasoning":"..."}},
+  "champion": "Country",
+  "champion_reasoning": "2-3 sentences on why this team wins the tournament"
+}}
 """
 
 OVERRIDE_ADDENDUM = """
@@ -107,11 +109,11 @@ class PredictionAgent:
 
     async def predict(self, wc_data: Dict[str, Any], football_data: Dict[str, Any],
                       overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        groups_text = self._format_groups(wc_data, overrides)
+        group_results_template = self._build_group_template(wc_data, overrides)
         football_summary = football_data.get("summary", "No league data available")
 
         dynamic = DYNAMIC_TEMPLATE.format(
-            groups_text=groups_text,
+            group_results_template=group_results_template,
             football_data_summary=football_summary,
         )
 
@@ -120,8 +122,7 @@ class PredictionAgent:
             if override_text:
                 dynamic += OVERRIDE_ADDENDUM.format(override_text=override_text)
 
-        # Static prompt goes first so OpenAI's automatic prefix cache applies to it
-        user_content = STATIC_PROMPT + dynamic
+        user_content = STATIC_PREFIX + dynamic
 
         response = await self.client.chat.completions.create(
             model="gpt-4o",
@@ -135,6 +136,26 @@ class PredictionAgent:
         raw = response.choices[0].message.content.strip()
         predictions = self._parse_response(raw)
         return self._fix_group_results(predictions, wc_data)
+
+    def _build_group_template(self, wc_data: Dict[str, Any], overrides: Dict[str, Any] | None = None) -> str:
+        """Build the group_results JSON template with team names pre-filled."""
+        group_overrides = {go["group"]: go["teams"] for go in (overrides or {}).get("groupOverrides", [])}
+        parts = []
+        for group in wc_data.get("groups", []):
+            letter = group["name"]
+            if letter in group_overrides:
+                team_names = [t["name"] for t in group_overrides[letter]]
+            else:
+                team_names = group.get("teams", [])
+
+            team_lines = ",\n        ".join(
+                f'{{"name":"{name}","position":?,"points":?,"gf":?,"ga":?}}'
+                for name in team_names
+            )
+            parts.append(
+                f'    {{"group":"{letter}","teams":[\n        {team_lines}\n    ]}}'
+            )
+        return ",\n".join(parts)
 
     def _format_overrides(self, overrides: Dict[str, Any]) -> str:
         lines = []
@@ -161,21 +182,8 @@ class PredictionAgent:
 
         return "\n".join(lines)
 
-    def _format_groups(self, wc_data: Dict[str, Any], overrides: Dict[str, Any] | None = None) -> str:
-        lines = []
-        group_overrides = {go["group"]: go["teams"] for go in (overrides or {}).get("groupOverrides", [])}
-        for group in wc_data.get("groups", []):
-            name = group["name"]
-            if name in group_overrides:
-                team_names = [t["name"] for t in group_overrides[name]]
-                lines.append(f"Group {name} (USER ORDER): {', '.join(team_names)}")
-            else:
-                teams = ", ".join(group.get("teams", []))
-                lines.append(f"Group {name}: {teams}")
-        return "\n".join(lines) if lines else "Groups not yet available"
-
     def _fix_group_results(self, predictions: Dict[str, Any], wc_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Replace any hallucinated team names in group_results with the correct official teams."""
+        """Safety net: replace any hallucinated team names with the official draw teams."""
         correct_by_group = {g["name"]: g["teams"] for g in wc_data.get("groups", [])}
 
         for group_result in predictions.get("group_results", []):
@@ -186,9 +194,8 @@ class PredictionAgent:
             current_names = [t["name"] for t in group_result.get("teams", [])]
 
             if set(current_names) == set(correct):
-                continue  # already correct
+                continue
 
-            # Keep any team that's already right; replace wrong ones with missing correct teams
             used: set = set()
             fixed: list = []
             for team_entry in group_result["teams"]:
@@ -196,7 +203,7 @@ class PredictionAgent:
                     fixed.append(team_entry)
                     used.add(team_entry["name"])
                 else:
-                    fixed.append(None)  # placeholder
+                    fixed.append(None)
 
             remaining = [t for t in correct if t not in used]
             ri = 0
@@ -205,7 +212,6 @@ class PredictionAgent:
                     fixed[i] = {**group_result["teams"][i], "name": remaining[ri]}
                     ri += 1
 
-            # Ensure exactly 4 entries; pad with any still-missing correct teams
             final = [t for t in fixed if t is not None]
             for t in correct:
                 if t not in {e["name"] for e in final}:

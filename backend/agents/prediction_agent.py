@@ -76,7 +76,15 @@ Be bold with predictions. Consider realistic upsets. Keep reasoning to 1 sentenc
 
 DYNAMIC_TEMPLATE = """\
 
-### Qualified Teams by Group
+### ⚠️ OFFICIAL GROUP COMPOSITIONS — FIXED, DO NOT ALTER
+The 48 teams below are the OFFICIAL 2026 FIFA World Cup draw results.
+CRITICAL RULES:
+- Each group contains EXACTLY and ONLY the 4 teams listed below.
+- You MUST use ONLY these team names in group_results, spelled exactly as written.
+- Do NOT substitute, hallucinate, add, or remove ANY teams from ANY group.
+- Argentina is NOT in Group A. Netherlands is NOT in Group A. Cameroon is NOT in Group A.
+- Every team in your group_results JSON MUST be one of the teams listed below for that group.
+
 {groups_text}
 
 ### Current European League Strength Indicators
@@ -125,7 +133,8 @@ class PredictionAgent:
         )
 
         raw = response.choices[0].message.content.strip()
-        return self._parse_response(raw)
+        predictions = self._parse_response(raw)
+        return self._fix_group_results(predictions, wc_data)
 
     def _format_overrides(self, overrides: Dict[str, Any]) -> str:
         lines = []
@@ -164,6 +173,46 @@ class PredictionAgent:
                 teams = ", ".join(group.get("teams", []))
                 lines.append(f"Group {name}: {teams}")
         return "\n".join(lines) if lines else "Groups not yet available"
+
+    def _fix_group_results(self, predictions: Dict[str, Any], wc_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Replace any hallucinated team names in group_results with the correct official teams."""
+        correct_by_group = {g["name"]: g["teams"] for g in wc_data.get("groups", [])}
+
+        for group_result in predictions.get("group_results", []):
+            letter = group_result.get("group", "")
+            if letter not in correct_by_group:
+                continue
+            correct = correct_by_group[letter]
+            current_names = [t["name"] for t in group_result.get("teams", [])]
+
+            if set(current_names) == set(correct):
+                continue  # already correct
+
+            # Keep any team that's already right; replace wrong ones with missing correct teams
+            used: set = set()
+            fixed: list = []
+            for team_entry in group_result["teams"]:
+                if team_entry["name"] in correct:
+                    fixed.append(team_entry)
+                    used.add(team_entry["name"])
+                else:
+                    fixed.append(None)  # placeholder
+
+            remaining = [t for t in correct if t not in used]
+            ri = 0
+            for i, slot in enumerate(fixed):
+                if slot is None and ri < len(remaining):
+                    fixed[i] = {**group_result["teams"][i], "name": remaining[ri]}
+                    ri += 1
+
+            # Ensure exactly 4 entries; pad with any still-missing correct teams
+            final = [t for t in fixed if t is not None]
+            for t in correct:
+                if t not in {e["name"] for e in final}:
+                    final.append({"name": t, "position": len(final) + 1, "points": 0, "gf": 0, "ga": 0})
+            group_result["teams"] = final[:4]
+
+        return predictions
 
     def _parse_response(self, raw: str) -> Dict[str, Any]:
         match = re.search(r"\{.*\}", raw, re.DOTALL)
